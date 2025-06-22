@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Persona ID</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+#start-screen {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  margin: auto;
+  cursor: pointer;
+}
+
+#start-bg {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+}
+
+.start-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  color: white;
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+  font-weight: bold;
+  pointer-events: none;
+}
+    
+    body {
+      font-family: Arial, sans-serif;
+      background: url('MBTI_NFT_BG+-01.png') no-repeat center center fixed;
+      background-size: cover;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.9);
+      margin: auto;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .question {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+    }
+    .option {
+      background: #e0e0e0;
+      border: none;
+      margin: 10px 0;
+      padding: 12px 20px;
+      width: 100%;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .option:hover {
+      background: #d4d4d4;
+    }
+    .result-img {
+      width: 200px;
+      height: 200px;
+      margin: 20px auto;
+    }
+    .btn {
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      margin: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #0056b3;
+    }
+    .progress-bar {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.progress-step {
+  width: 20px;
+  height: 20px;
+  background-color: #ccc;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.progress-step.active {
+  background-color: #007bff;
+}
+
+.progress-step.completed {
+  background-color: lightblue;
+}
+  </style>
+</head>
+   <script type="module">
+import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
+
+const nftAddress = "0x1d5B95B64E8182C16064Bf26C69ceAC9403FB8AE";
+const nftABI = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
+const tokenId = 1;
+const signatureMessage = "Sign this message to verify access to My Persona-ID.";
+
+function createAccessModal() {
+  const modal = document.createElement("div");
+  modal.id = "wallet-modal";
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85); color: white; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: sans-serif; text-align: center;
+  `;
+
+  modal.innerHTML = `
+    <h2>Verify NFT Access</h2>
+    <p id="modal-status">Connect your wallet to continue.</p>
+    <button id="modal-connect" style="padding: 10px 20px; font-size: 1rem; margin-top: 1rem;">Connect Wallet</button>
+  `;
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+async function verifyWalletAccess(statusEl) {
+  try {
+    if (!window.ethereum) {
+      statusEl.textContent = "MetaMask is required to access this site.";
+      return;
+    }
+
+    statusEl.textContent = "Requesting wallet connection...";
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    statusEl.textContent = "Checking NFT ownership...";
+    const contract = new ethers.Contract(nftAddress, nftABI, provider);
+    const balance = await contract.balanceOf(userAddress, tokenId);
+
+    if (balance.toNumber() > 0) {
+      const signature = await signer.signMessage(signatureMessage);
+      if (signature) {
+        sessionStorage.setItem("MyPersonaID_verified", "true");
+        return true;
+      }
+    } else {
+      statusEl.textContent = "You don’t own the required NFT.";
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Verification failed. Try again.";
+  }
+
+  return false;
+}
+
+function showSiteContent() {
+  const modal = document.getElementById("wallet-modal");
+  if (modal) modal.remove();
+  document.body.style.overflow = "auto"; // re-enable scrolling
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (sessionStorage.getItem("MyPersonaID_verified") === "true") {
+    showSiteContent();
+    return;
+  }
+
+  document.body.style.overflow = "hidden"; // lock scroll
+  const modal = createAccessModal();
+
+  const connectBtn = document.getElementById("modal-connect");
+  const statusEl = document.getElementById("modal-status");
+
+  connectBtn.addEventListener("click", async () => {
+    const verified = await verifyWalletAccess(statusEl);
+    if (verified) showSiteContent();
+  });
+});
+</script>
+<body>
+  <!-- Start Screen -->
+  <div class="container" id="start-screen">
+    <img id="start-bg" src="https://ipfs.io/ipfs/bafybeicfz5jvafr6x7lqyjxkz2xwn5y565vzmlgl46hbrqjlpdcehtmjla" alt="Start Background" />
+    <div class="start-text">Tap to Start</div>
+  </div>
+
+  <!-- Quiz Container -->
+  <div class="container" id="quiz-container" style="display:none;">
+    <div id="quiz-content"></div>
+    <div id="progress-bar" class="progress-bar"></div>
+  </div>
+
+  <script>
+    // --- Quiz & Mapping Setup ---
+    const questions = [{
+    question: "You're offered the red pill or the blue pill. What do you do?",
+    options: [
+      { text: "Take the red pill—curiosity killed the cat, but I’m not a cat.", value: 'N' },
+      { text: "Take the blue pill—better the devil you know than the code you don’t.", value: 'S' },
+      { text: "Flip a coin and follow the chaos.", value: 'P' },
+      { text: "Run a risk assessment and wait for patch notes.", value: 'J' }
+    ]
+  },
+  {
+    question: "You're suddenly a contestant on a reality show called 'Project Existential Crisis.' What’s your strategy?",
+    options: [
+      { text: "Monologue my feelings like it’s a Netflix drama.", value: 'F' },
+      { text: "Solve every challenge with ruthless logic and a spreadsheet.", value: 'T' },
+      { text: "Start a secret alliance using charisma and memes.", value: 'E' },
+      { text: "Quietly observe and sabotage from the shadows.", value: 'I' }
+    ]
+  },
+  {
+    question: "You’re appointed captain of a starship. What's your first mission order?",
+    options: [
+      { text: "Chart a course for unknown galaxies—engage!", value: 'N' },
+      { text: "Fix the life-support system first. No breathing, no exploring.", value: 'S' },
+      { text: "Hold a crew-wide dance party to boost morale.", value: 'F' },
+      { text: "Run diagnostics, optimize fuel efficiency, then warp out.", value: 'T' }
+    ]
+  },
+  {
+    question: "An AI tells you your reality is a simulation. Your response?",
+    options: [
+      { text: "Sweet. Let’s hack it and unlock God Mode.", value: 'N' },
+      { text: "Sim or not, I still gotta pay rent. Let’s keep moving.", value: 'S' },
+      { text: "Do simulated people have simulated feelings? Let’s unpack that.", value: 'F' },
+      { text: "Where’s the source code and who’s the admin?", value: 'T' }
+    ]
+  },
+  {
+    question: "The trolley problem, but you're the trolley. Where are you headed?",
+    options: [
+      { text: "Divert tracks, save lives, write a thinkpiece later.", value: 'F' },
+      { text: "Run probability calculations mid-speed.", value: 'T' },
+      { text: "Jump the rails. Nobody controls my fate.", value: 'P' },
+      { text: "Schedule a committee meeting before impact.", value: 'J' }
+    ]
+  },
+  {
+    question: "Doctor Strange hands you the Time Stone. What do you do?",
+    options: [
+      { text: "Explore infinite timelines for funsies.", value: 'E' },
+      { text: "Only use it in emergencies—power comes with responsibility.", value: 'J' },
+      { text: "Loop until I figure out how to win every argument ever.", value: 'T' },
+      { text: "Visit my childhood and give past-me a hug.", value: 'F' }
+    ]
+  },
+  {
+    question: "You’re stranded on Arrakis (Dune). What’s your first move?",
+    options: [
+      { text: "Find the Fremen, blend in, ride a sandworm.", value: 'N' },
+      { text: "Locate shelter, water, and stay alive.", value: 'S' },
+      { text: "Ask yourself if spice addiction is really that bad.", value: 'P' },
+      { text: "Draft a survival protocol and assign duties.", value: 'J' }
+    ]
+  },
+  {
+    question: "You're recruited by The Good Place architects. Your job?",
+    options: [
+      { text: "Invent bizarre moral puzzles to confuse everyone.", value: 'T' },
+      { text: "Redesign the afterlife with better vibes and playlists.", value: 'F' },
+      { text: "Audit the karma system for inconsistencies.", value: 'J' },
+      { text: "Create chaos loops just to see what happens.", value: 'P' }
+    ]
+  },
+  {
+    question: "How would your ideal clone describe you?",
+    options: [
+      { text: "‘Chaotic good with a caffeine addiction’", value: 'E' },
+      { text: "‘Logically optimized for max output’", value: 'T' },
+      { text: "‘Deep thinker, cries during Pixar movies’", value: 'F' },
+      { text: "‘Quietly ruling from the shadows’", value: 'I' }
+    ]
+  },
+  {
+    question: "You find a talking toaster. It gives you life advice. What do you do?",
+    options: [
+      { text: "Thank it and ask follow-up questions. It’s clearly sentient.", value: 'N' },
+      { text: "Get rid of it. Talking appliances are how horror movies start.", value: 'S' },
+      { text: "Share your feelings over breakfast—it listens.", value: 'F' },
+      { text: "Ask if it accepts firmware updates and logical inputs.", value: 'T' }
+    ]
+  }];
+    
+  const mbtiMap = {  
+  ISTP: 'ipfs://bafkreicih5xhnslzlebz7fhelnbea66btlzlb6mivvy3cldqymxgttqxn4',
+  ISFP: 'ipfs://bafkreify4dcndvovzghrjetqvbtnjxap7trn7guumlkis7csbia3gvehpm',
+  ISFJ: 'ipfs://bafkreig7nobb5nwmccntdrynvoy3bpbuznglmpjw7j432unuigxz3slaqe',
+  INTP: 'ipfs://bafkreibbve27dzqsxsni36dq7vbob6ul4arbs66kazb7vpgqqpdgfhgiwq',
+  INTJ: 'ipfs://bafkreigmkbp7zycuwptgqkvmktjadtkbwh4gj77voxaitj4n2fr4kwmtmy',
+  INFP: 'ipfs://bafkreib7z472utphrmgsxbh5xujf5si2pstiigtshp7nre6nuzmdwqsjbq',
+  INFJ: 'ipfs://bafkreievi25acxtt2ecn6ww745j6sptqd3ibhcnk2nceilz7o4b6xnugeq',
+  ESTP: 'ipfs://bafkreicdp7pbfmepovoaefh3s5jmxviipbkajzgp44dncggijp2wo5q2ze',
+  ESTJ: 'ipfs://bafkreiaawsinlo2wx6bpy4lwgzgj56vl3uc2nxbb7opmclxnyz5hz55v6e',
+  ESFP: 'ipfs://bafkreigbvtntxgs3jxf5fcewyb54l3zfhgxanu2y3y5qi4kr2njyrrrzx4',
+  ESFJ: 'ipfs://bafkreibl2ucmcegy5ir3owhp4n7mdt5txscuscdux3oeg3xellx5ueqp64',
+  ENTP: 'ipfs://bafybeifhhnfnsm7ilmle5ldg4mo4yphr3ewyt7wpaassq7o6jf4xqhcrui',
+  ENTJ: 'ipfs://bafkreidj2osjgcovhbwzhf3ypa6rihecfbowrzxao3b6msqpotstxwunae',
+  ENFP: 'ipfs://bafkreibhxmmvxytbkg7f3eimlmwrhxqgut3tqi3hcffconjgxa6hiiz2yi',
+  ENFJ: 'ipfs://bafkreifuv2qmqy4trzpqu3ua3tplrrzobzdva64izhs6673rromzskgusq'
+  };
+    
+    const mbtiIndexMap = {
+      ISTP:0, ISTJ:1, ISFP:2, ISFJ:3,
+      INTP:4, INTJ:5, INFP:6, INFJ:7,
+      ESTP:8, ESTJ:9, ESFP:10, ESFJ:11,
+      ENTP:12, ENTJ:13, ENFP:14, ENFJ:15
+    };
+    const contractAddress = '0x21b68c7cc9d8461fd8b7dfa5503383d53e638059';
+    const contractAbi = [
+      "function mintMBTI(uint8 mbtiIndex) external",
+      "function uri(uint256) view returns (string)"
+    ];
+
+    let provider, signer, contract;
+    let current = 0;
+    const score = { E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0 };
+    const quizContent = document.getElementById('quiz-content');
+
+    function shuffle(a){ return a.sort(()=>Math.random()-0.5); }
+    function updateProgressBar() {
+     const bar = document.getElementById('progress-bar');
+     bar.innerHTML = '';
+     for (let i = 0; i < questions.length; i++) {
+       const step = document.createElement('div');
+       step.className = 'progress-step';
+       if (i < current) step.classList.add('completed');
+       if (i === current) step.classList.add('active');
+       bar.appendChild(step);
+     }
+   }
+
+    function showQuestion() {
+      const q = questions[current];
+      const opts = shuffle([...q.options]);
+      quizContent.innerHTML = `
+        <div class="question">${q.question}</div>
+        ${opts.map(o => `<button class="option" onclick="handleAnswer('${o.value}')">${o.text}</button>`).join('')}
+      `;
+      updateProgressBar();
+    }
+
+    function handleAnswer(v) {
+      score[v]++;
+      current++;
+      if (current < questions.length) showQuestion();
+      else { showResult(); updateProgressBar(); }
+    }
+
+    function getMBTI() {
+      return (score.I>=score.E?'I':'E') +
+             (score.N>=score.S?'N':'S') +
+             (score.F>=score.T?'F':'T') +
+             (score.P>=score.J?'P':'J');
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) throw new Error('MetaMask not found');
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      contract = new ethers.Contract(contractAddress, contractAbi, signer);
+      const addr = await signer.getAddress();
+      return addr;
+    }
+
+    async function mintPersona(mbti) {
+      const idx = mbtiIndexMap[mbti];
+      if (idx === undefined) throw new Error("Invalid MBTI type");
+      const tx = await contract.mintMBTI(idx);
+      await tx.wait();
+      alert(`✅ Minted ${mbti} (#${idx}) successfully!`);
+    }
+
+function showResult() {
+  const mbti = getMBTI();
+  const cid = mbtiMap[mbti];
+  const imageUrl = cid ? `https://ipfs.io/ipfs/${cid.replace('ipfs://','')}` : '';
+
+  quizContent.innerHTML = `
+    <h2>Your Persona‑ID Type: ${mbti}</h2>
+    <img class="result-img" src="${imageUrl}" alt="${mbti}" />
+    <p>This is your Persona‑ID based NFT. You can now mint it:</p>
+    <button class="btn" id="connect-btn">Connect Wallet</button>
+    <button class="btn" id="mint-btn" data-mbti="${mbti}" style="display:none">Mint ${mbti}</button>
+  `;
+
+  document.getElementById('connect-btn').onclick = async () => {
+    try {
+      const addr = await connectWallet();
+      document.getElementById('connect-btn').innerText = addr.slice(0,6)+'…'+addr.slice(-4);
+      document.getElementById('connect-btn').disabled = true;
+      document.getElementById('mint-btn').style.display = 'inline-block';
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  document.getElementById('mint-btn').onclick = async (e) => {
+    try {
+      const mbtiType = e.target.getAttribute('data-mbti');
+      await mintPersona(mbtiType);
+      document.getElementById('mint-btn').disabled = true;
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+}
+
+    // --- Start Logic ---
+    document.getElementById('start-screen').onclick = () => {
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('quiz-container').style.display = 'block';
+      showQuestion();
+    };
+  </script>
+</body>
+</html>
