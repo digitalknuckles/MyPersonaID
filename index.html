@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Persona ID</title>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@2.0.0/dist/umd/index.min.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.9.0/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
 #start-screen {
@@ -106,9 +106,8 @@
 }
   </style>
 </head>
-<script type="module">
-  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
 
+<script>
   const nftAddress = "0x1d5B95B64E8182C16064Bf26C69ceAC9403FB8AE";
   const nftABI = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
   const tokenId = 1;
@@ -116,13 +115,14 @@
   const mintURL = "https://opensea.io/assets/matic/0x1d5b95b64e8182c16064bf26c69ceac9403fb8ae/1";
 
   async function connectWalletWithWalletConnect() {
-    const provider = new WalletConnectProvider.default({
-      projectId: "15da3c431a74b29edb63198a503d45b5", // Get one at https://cloud.walletconnect.com
-      chains: [137], // Polygon
-      showQrModal: true
+    const provider = await WalletConnectProvider.init({
+      projectId: "15da3c431a74b29edb63198a503d45b5",
+      chains: [137],
+      showQrModal: true,
+      methods: ["eth_sendTransaction", "personal_sign", "eth_sign", "eth_signTransaction", "eth_signTypedData"],
     });
 
-    await provider.enable();
+    await provider.connect();
     const ethersProvider = new ethers.providers.Web3Provider(provider);
     const signer = ethersProvider.getSigner();
     const userAddress = await signer.getAddress();
@@ -145,7 +145,7 @@
           showSiteContent();
         }
       } else {
-        statusEl.textContent = "NFT not found. Redirecting...";
+        statusEl.textContent = "NFT not found. Redirecting to mint...";
         setTimeout(() => window.location.href = mintURL, 3000);
       }
     } catch (err) {
