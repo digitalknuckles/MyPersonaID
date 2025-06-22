@@ -105,97 +105,71 @@
 }
   </style>
 </head>
-<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<script>
-  const nftAddress = "0x1d5B95B64E8182C16064Bf26C69ceAC9403FB8AE";
-  const nftABI = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
-  const tokenId = 1;
-  const signatureMessage = "Sign this message to verify access to My Persona-ID.";
-  const mintURL = "https://opensea.io/assets/matic/0x1d5b95b64e8182c16064bf26c69ceac9403fb8ae/1";
+   <script type="module">
+import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js";
 
-async function connectWalletWithWalletConnect() {
-  const provider = new window.WalletConnectProvider({
-    rpc: {
-      137: "https://polygon-rpc.com"
-    },
-    chainId: 137,
-    infuraId: null, // optional
-    qrcode: true,
-  });
+const nftAddress = "0x1d5B95B64E8182C16064Bf26C69ceAC9403FB8AE";
+const nftABI = ["function balanceOf(address account, uint256 id) view returns (uint256)"];
+const tokenId = 1;
+const signatureMessage = "Sign this message to verify access to My Persona-ID.";
 
-  await provider.enable(); // this triggers QR modal
-  const ethersProvider = new ethers.providers.Web3Provider(provider);
-  const signer = ethersProvider.getSigner();
-  const userAddress = await signer.getAddress();
-  return { ethersProvider, signer, userAddress };
+function createAccessModal() {
+  const modal = document.createElement("div");
+  modal.id = "wallet-modal";
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85); color: white; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: sans-serif; text-align: center;
+  `;
+
+  modal.innerHTML = `
+    <h2>Verify NFT Access</h2>
+    <p id="modal-status">Connect your wallet to continue.</p>
+    <button id="modal-connect" style="padding: 10px 20px; font-size: 1rem; margin-top: 1rem;">Connect Wallet</button>
+  `;
+
+  document.body.appendChild(modal);
+  return modal;
 }
-  
-  async function verifyAccess(statusEl) {
-    try {
-      statusEl.textContent = "Connecting wallet...";
-      const { ethersProvider, signer, userAddress } = await connectWalletWithWalletConnect();
 
-      statusEl.textContent = "Checking NFT ownership...";
-      const contract = new ethers.Contract(nftAddress, nftABI, ethersProvider);
-      const balance = await contract.balanceOf(userAddress, tokenId);
-
-      if (balance.toNumber() > 0) {
-        const signature = await signer.signMessage(signatureMessage);
-        if (signature) {
-          sessionStorage.setItem("MyPersonaID_verified", "true");
-          showSiteContent();
-        }
-      } else {
-        statusEl.textContent = "NFT not found. Redirecting to mint...";
-        setTimeout(() => window.location.href = mintURL, 3000);
-      }
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = "Verification failed. Try again.";
-    }
-  }
-
-  function createAccessModal() {
-    const modal = document.createElement("div");
-    modal.id = "wallet-modal";
-    modal.style.cssText = `
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85); color: white; z-index: 9999;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-family: sans-serif; text-align: center;
-    `;
-
-    modal.innerHTML = `
-      <h2>Verify NFT Access</h2>
-      <p id="modal-status">Connect your wallet to continue.</p>
-      <button id="modal-connect" style="padding: 10px 20px; font-size: 1rem; margin-top: 1rem;">Connect Wallet</button>
-    `;
-
-    document.body.appendChild(modal);
-    return modal;
-  }
-
-  function showSiteContent() {
-    const modal = document.getElementById("wallet-modal");
-    if (modal) modal.remove();
-    document.body.style.overflow = "auto";
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    if (sessionStorage.getItem("MyPersonaID_verified") === "true") {
-      showSiteContent();
+async function verifyWalletAccess(statusEl) {
+  try {
+    if (!window.ethereum) {
+      statusEl.textContent = "MetaMask is required to access this site.";
       return;
     }
 
-    document.body.style.overflow = "hidden";
-    const modal = createAccessModal();
-    const connectBtn = document.getElementById("modal-connect");
-    const statusEl = document.getElementById("modal-status");
+    statusEl.textContent = "Requesting wallet connection...";
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
 
-    connectBtn.addEventListener("click", () => verifyAccess(statusEl));
-  });
-</script>
+    statusEl.textContent = "Checking NFT ownership...";
+    const contract = new ethers.Contract(nftAddress, nftABI, provider);
+    const balance = await contract.balanceOf(userAddress, tokenId);
+
+    if (balance.toNumber() > 0) {
+      const signature = await signer.signMessage(signatureMessage);
+      if (signature) {
+        sessionStorage.setItem("MyPersonaID_verified", "true");
+        return true;
+      }
+    } else {
+      statusEl.textContent = "You don’t own the required NFT. Redirecting to minting page...";
+      // ⏳ Wait a moment, then redirect
+      setTimeout(() => {
+        window.location.href = "https://opensea.io/item/matic/0x1d5b95b64e8182c16064bf26c69ceac9403fb8ae/1";
+      }, 3000);
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Verification failed. Try again.";
+  }
+
+  return false;
+}
 <body>
   <!-- Start Screen -->
   <div class="container" id="start-screen">
