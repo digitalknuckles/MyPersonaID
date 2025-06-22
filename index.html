@@ -114,21 +114,27 @@
   const signatureMessage = "Sign this message to verify access to My Persona-ID.";
   const mintURL = "https://opensea.io/assets/matic/0x1d5b95b64e8182c16064bf26c69ceac9403fb8ae/1";
 
-  async function connectWalletWithWalletConnect() {
-    const provider = await WalletConnectProvider.init({
-      projectId: "15da3c431a74b29edb63198a503d45b5",
-      chains: [137],
-      showQrModal: true,
-      methods: ["eth_sendTransaction", "personal_sign", "eth_sign", "eth_signTransaction", "eth_signTypedData"],
-    });
+async function connectWalletWithWalletConnect() {
+  const provider = await window.WalletConnectEthereumProvider.init({
+    projectId: "15da3c431a74b29edb63198a503d45b5",
+    chains: [137],
+    showQrModal: true,
+    methods: [
+      "eth_sendTransaction",
+      "personal_sign",
+      "eth_sign",
+      "eth_signTransaction",
+      "eth_signTypedData"
+    ],
+  });
 
-    await provider.connect();
-    const ethersProvider = new ethers.providers.Web3Provider(provider);
-    const signer = ethersProvider.getSigner();
-    const userAddress = await signer.getAddress();
-    return { ethersProvider, signer, userAddress };
-  }
-
+  await provider.connect();
+  const ethersProvider = new ethers.providers.Web3Provider(provider);
+  const signer = ethersProvider.getSigner();
+  const userAddress = await signer.getAddress();
+  return { ethersProvider, signer, userAddress };
+}
+  
   async function verifyAccess(statusEl) {
     try {
       statusEl.textContent = "Connecting wallet...";
